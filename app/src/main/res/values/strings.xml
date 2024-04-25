@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">ImageColourExtractor</string>
+    <string name="homeTitleBar">Home Screen</string>
+    <string name="home_screen_message">Welcome to Home Screen</string>
+    <string name="move_to_details_page">Go to Details</string>
+    <string name="details_screen_title">Detail Screen</string>
+</resources>
