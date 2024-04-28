@@ -58,5 +58,4 @@ class CameraPermissionTextProvider : PermissionTextProvider {
                     "Please grant it."
         }
     }
-
 }
