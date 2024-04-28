@@ -2,10 +2,7 @@ package dev.krishna.imagecolourextractor.presentation
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.content.Context
-import android.content.Intent
-import android.net.Uri
-import android.provider.Settings
+import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -24,19 +21,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.compose.rememberNavController
 import dev.krishna.imagecolourextractor.R
 import dev.krishna.imagecolourextractor.ui.customcompose.SquareImageButton
+import dev.krishna.imagecolourextractor.util.checkIfPermissionIsGranted
+import dev.krishna.imagecolourextractor.util.openAppSettings
 import dev.krishna.imagecolourextractor.util.permission.CameraPermissionTextProvider
 import dev.krishna.imagecolourextractor.util.permission.PermissionDialog
 import dev.krishna.imagecolourextractor.util.permission.PermissionViewModel
@@ -49,7 +49,7 @@ fun DetailsScreen(
 ) {
     val permissionViewModel = viewModel<PermissionViewModel>()
     val dialogueQueue = permissionViewModel.visiblePermissionDialogQueue
-    val context by LocalContext.current
+    val context = LocalContext.current
 
     val cameraPermissionResultLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -65,18 +65,20 @@ fun DetailsScreen(
         .reversed()
         .forEach { permission ->
             PermissionDialog(
-                permissionTextProvider = when(permission) {
-                                                          Manifest.permission.CAMERA -> {
-                                                              CameraPermissionTextProvider()
-                                                          }
-                    else -> return@forEach
-                                                          },
-                isPermissionPermanentlyDeclined = !should,
-                onDismiss = { /*TODO*/ },
-                onOkClick = { /*TODO*/ },
-                onGoToAppSettingsClick = openAppSettings(context)
-            )
+                permissionTextProvider = when (permission) {
+                    Manifest.permission.CAMERA -> {
+                        CameraPermissionTextProvider()
+                    }
 
+                    else -> return@forEach
+                },
+                isPermissionPermanentlyDeclined = !checkIfPermissionIsGranted(context, permission),
+                onDismiss = permissionViewModel::dismissDialog,
+                onOkClick = { navController.navigate("Screen1") },
+                onGoToAppSettingsClick = {
+                    openAppSettings(context)
+                }
+            )
         }
 
     Scaffold(
@@ -113,9 +115,17 @@ fun DetailsScreen(
                     buttonSizeInDp = 160,
                     imageSizeInDp = 100
                 ) {
-                    cameraPermissionResultLauncher.launch(
-                        Manifest.permission.CAMERA
-                    )
+                    if (ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.CAMERA
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        navController.navigate("Screen1")
+                    } else {
+                        cameraPermissionResultLauncher.launch(
+                            Manifest.permission.CAMERA
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -141,13 +151,5 @@ private fun PreviewDetailScreen() {
     DetailsScreen(navController = navController)
 }
 
-fun openAppSettings(context: Context) {
-    Intent(
-        Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-        Uri.fromParts("package", context.packageName, null)
-    ).also {
-        context.startActivity(it)
-    }
-}
 
 
