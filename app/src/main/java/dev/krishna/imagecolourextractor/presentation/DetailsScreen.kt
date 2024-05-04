@@ -3,7 +3,10 @@ package dev.krishna.imagecolourextractor.presentation
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
+import android.os.Build
+import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -36,6 +39,7 @@ import androidx.navigation.compose.rememberNavController
 import dev.krishna.imagecolourextractor.R
 import dev.krishna.imagecolourextractor.ui.customcompose.SquareImageButton
 import dev.krishna.imagecolourextractor.util.checkIfPermissionIsGranted
+import dev.krishna.imagecolourextractor.util.getActivity
 import dev.krishna.imagecolourextractor.util.openAppSettings
 import dev.krishna.imagecolourextractor.util.permission.CameraPermissionTextProvider
 import dev.krishna.imagecolourextractor.util.permission.PermissionDialog
@@ -51,6 +55,18 @@ fun DetailsScreen(
     val dialogueQueue = permissionViewModel.visiblePermissionDialogQueue
     val context = LocalContext.current
 
+    val permissionForPhotoGallery =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            arrayOf(
+                Manifest.permission.READ_MEDIA_IMAGES,
+                Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
+            )
+        } else {
+            arrayOf(
+                Manifest.permission.READ_EXTERNAL_STORAGE
+            )
+        }
+
     val cameraPermissionResultLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted ->
@@ -61,25 +77,17 @@ fun DetailsScreen(
         }
     )
 
-    dialogueQueue
-        .reversed()
-        .forEach { permission ->
-            PermissionDialog(
-                permissionTextProvider = when (permission) {
-                    Manifest.permission.CAMERA -> {
-                        CameraPermissionTextProvider()
-                    }
-
-                    else -> return@forEach
-                },
-                isPermissionPermanentlyDeclined = !checkIfPermissionIsGranted(context, permission),
-                onDismiss = permissionViewModel::dismissDialog,
-                onOkClick = { navController.navigate("Screen1") },
-                onGoToAppSettingsClick = {
-                    openAppSettings(context)
-                }
-            )
+    val imageGalleryPermissionResultLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestMultiplePermissions(),
+        onResult = { perms ->
+            permissionForPhotoGallery.forEach { permission ->
+                permissionViewModel.onPermissionResult(
+                    permission = permission,
+                    isGranted = perms[permission] == true
+                )
+            }
         }
+    )
 
     Scaffold(
         topBar = {
@@ -136,11 +144,55 @@ fun DetailsScreen(
                     buttonSizeInDp = 160,
                     imageSizeInDp = 100
                 ) {
-
+                    if (ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.READ_EXTERNAL_STORAGE
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        try {
+                            val mediaPicker = context.getActivity()?.registerForActivityResult(
+                                ActivityResultContracts.PickVisualMedia()
+                            ) { uri ->
+                                if (uri != null) {
+                                    Log.d("ASX", "Selected URI: $uri")
+                                } else {
+                                    Log.d("ASX", "No URI selected")
+                                }
+                            }
+                            mediaPicker?.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+                        } catch (e: Exception) {
+                            Log.e("MediaPickerException", "Exception found: $e")
+                        }
+                    } else {
+                        imageGalleryPermissionResultLauncher.launch(
+                            permissionForPhotoGallery
+                        )
+                    }
                 }
             }
         }
     )
+
+    dialogueQueue
+        .reversed()
+        .forEach { permission ->
+            PermissionDialog(
+                permissionTextProvider = when (permission) {
+                    Manifest.permission.CAMERA -> {
+                        CameraPermissionTextProvider()
+                    }
+
+                    else -> return@forEach
+                },
+                isPermissionPermanentlyDeclined = !checkIfPermissionIsGranted(context, permission),
+                onDismiss = permissionViewModel::dismissDialog,
+                onOkClick = { navController.navigate("Screen1") },
+                onGoToAppSettingsClick = {
+                    openAppSettings(context)
+                }
+            )
+        }
+
 }
 
 
