@@ -2,9 +2,11 @@ package dev.krishna.imagecolourextractor.presentation
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Context
 import android.content.pm.PackageManager
-import android.os.Build
+import android.net.Uri
 import android.util.Log
+import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -39,11 +41,13 @@ import androidx.navigation.compose.rememberNavController
 import dev.krishna.imagecolourextractor.R
 import dev.krishna.imagecolourextractor.ui.customcompose.SquareImageButton
 import dev.krishna.imagecolourextractor.util.checkIfPermissionIsGranted
-import dev.krishna.imagecolourextractor.util.getActivity
 import dev.krishna.imagecolourextractor.util.openAppSettings
 import dev.krishna.imagecolourextractor.util.permission.CameraPermissionTextProvider
+import dev.krishna.imagecolourextractor.util.permission.ImagePickerGalleryTextProvider
 import dev.krishna.imagecolourextractor.util.permission.PermissionDialog
 import dev.krishna.imagecolourextractor.util.permission.PermissionViewModel
+import dev.krishna.imagecolourextractor.util.permission.permissionForCamera
+import dev.krishna.imagecolourextractor.util.permission.permissionForPhotoGallery
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
@@ -55,23 +59,11 @@ fun DetailsScreen(
     val dialogueQueue = permissionViewModel.visiblePermissionDialogQueue
     val context = LocalContext.current
 
-    val permissionForPhotoGallery =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            arrayOf(
-                Manifest.permission.READ_MEDIA_IMAGES,
-                Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED
-            )
-        } else {
-            arrayOf(
-                Manifest.permission.READ_EXTERNAL_STORAGE
-            )
-        }
-
     val cameraPermissionResultLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
         onResult = { isGranted ->
             permissionViewModel.onPermissionResult(
-                permission = Manifest.permission.CAMERA,
+                permission = permissionForCamera,
                 isGranted = isGranted
             )
         }
@@ -88,6 +80,16 @@ fun DetailsScreen(
             }
         }
     )
+
+    val mediaPicker = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            Log.d("ASX", "Selected URI: $uri")
+        } else {
+            Log.d("ASX", "No URI selected")
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -123,17 +125,11 @@ fun DetailsScreen(
                     buttonSizeInDp = 160,
                     imageSizeInDp = 100
                 ) {
-                    if (ContextCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.CAMERA
-                        ) == PackageManager.PERMISSION_GRANTED
-                    ) {
-                        navController.navigate("Screen1")
-                    } else {
-                        cameraPermissionResultLauncher.launch(
-                            Manifest.permission.CAMERA
-                        )
-                    }
+                    onCameraIconClicked(
+                        context = context,
+                        navController = navController,
+                        cameraPermissionResultLauncher = cameraPermissionResultLauncher
+                    )
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
@@ -144,30 +140,11 @@ fun DetailsScreen(
                     buttonSizeInDp = 160,
                     imageSizeInDp = 100
                 ) {
-                    if (ContextCompat.checkSelfPermission(
-                            context,
-                            Manifest.permission.READ_EXTERNAL_STORAGE
-                        ) == PackageManager.PERMISSION_GRANTED
-                    ) {
-                        try {
-                            val mediaPicker = context.getActivity()?.registerForActivityResult(
-                                ActivityResultContracts.PickVisualMedia()
-                            ) { uri ->
-                                if (uri != null) {
-                                    Log.d("ASX", "Selected URI: $uri")
-                                } else {
-                                    Log.d("ASX", "No URI selected")
-                                }
-                            }
-                            mediaPicker?.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
-                        } catch (e: Exception) {
-                            Log.e("MediaPickerException", "Exception found: $e")
-                        }
-                    } else {
-                        imageGalleryPermissionResultLauncher.launch(
-                            permissionForPhotoGallery
-                        )
-                    }
+                    onGalleryIconClicked(
+                        context = context,
+                        imageGalleryPermissionResultLauncher = imageGalleryPermissionResultLauncher,
+                        mediaPicker = mediaPicker
+                    )
                 }
             }
         }
@@ -181,7 +158,11 @@ fun DetailsScreen(
                     Manifest.permission.CAMERA -> {
                         CameraPermissionTextProvider()
                     }
-
+                    Manifest.permission.READ_MEDIA_IMAGES,
+                    Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED,
+                    Manifest.permission.READ_EXTERNAL_STORAGE -> {
+                        ImagePickerGalleryTextProvider()
+                    }
                     else -> return@forEach
                 },
                 isPermissionPermanentlyDeclined = !checkIfPermissionIsGranted(context, permission),
@@ -192,10 +173,49 @@ fun DetailsScreen(
                 }
             )
         }
-
 }
 
+private fun checkIfPermissionGranted(context:Context ,permissions: Array<String>): Boolean {
+    permissions.forEach {permission->
+        if (ContextCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED)
+            return false
+    }
+    return true
+}
 
+private fun onCameraIconClicked(
+    context: Context,
+    navController: NavController,
+    cameraPermissionResultLauncher: ManagedActivityResultLauncher<String, Boolean>
+) {
+    if (checkIfPermissionGranted(
+            context = context,
+            permissions = arrayOf(permissionForCamera)
+        )
+    ) {
+        navController.navigate("Screen1")
+    } else {
+        cameraPermissionResultLauncher.launch(permissionForCamera)
+    }
+}
+
+private fun onGalleryIconClicked(
+    context: Context,
+    imageGalleryPermissionResultLauncher: ManagedActivityResultLauncher<
+            Array<String>, Map<String, @JvmSuppressWildcards Boolean>
+            >,
+    mediaPicker: ManagedActivityResultLauncher<PickVisualMediaRequest, Uri?>
+) {
+    if (checkIfPermissionGranted(
+            context = context,
+            permissions = permissionForPhotoGallery
+        )
+    ) {
+        mediaPicker.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly))
+    } else {
+        imageGalleryPermissionResultLauncher.launch(permissionForPhotoGallery)
+    }
+}
 @Preview
 @Composable
 private fun PreviewDetailScreen() {
