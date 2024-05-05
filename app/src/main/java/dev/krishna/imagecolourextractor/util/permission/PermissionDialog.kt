@@ -59,3 +59,16 @@ class CameraPermissionTextProvider : PermissionTextProvider {
         }
     }
 }
+
+class ImagePickerGalleryTextProvider: PermissionTextProvider {
+    override fun getDescription(isPermissionPermanentlyDeclined: Boolean): String {
+        return if (isPermissionPermanentlyDeclined) {
+            "It seems you have permanently declined the Gallery Access.\" +\n" +
+                    "\"Please go to app settings and provide it."
+        } else {
+            "Gallery Access is required by this App.\" +\n" +
+                    "\"Please grant it."
+        }
+    }
+
+}
