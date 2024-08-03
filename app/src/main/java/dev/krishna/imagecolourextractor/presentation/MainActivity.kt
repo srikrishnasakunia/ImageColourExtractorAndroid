@@ -22,7 +22,10 @@ class MainActivity : ComponentActivity() {
         installSplashScreen()
         setContent {
             val navController = rememberNavController()
-            MyNavGraph(navController = navController)
+            MyNavGraph(
+                navController = navController,
+                applicationContext = applicationContext
+            )
         }
     }
 }

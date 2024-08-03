@@ -19,15 +19,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.dimensionResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import dev.krishna.imagecolourextractor.R
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(
-    navController: NavController
+    moveToDetails: () -> Unit
 ) {
     Scaffold(
         topBar = {
@@ -53,7 +51,7 @@ fun HomeScreen(
             ) {
                 Text(text = stringResource(id = R.string.home_screen_message))
                 Spacer(modifier = Modifier.padding(dimensionResource(id = R.dimen.padding_5_dp)))
-                Button(onClick = {navController.navigate("details_screen_route")}) {
+                Button(onClick = moveToDetails) {
                     Text(text = stringResource(id = R.string.move_to_details_page))
                 }    
             }
@@ -64,6 +62,5 @@ fun HomeScreen(
 @Preview
 @Composable
 private fun PreviewHomeScreen() {
-    val navController = rememberNavController()
-    HomeScreen(navController = navController)
+    HomeScreen {}
 }

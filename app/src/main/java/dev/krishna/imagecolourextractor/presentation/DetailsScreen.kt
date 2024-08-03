@@ -36,8 +36,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import dev.krishna.imagecolourextractor.R
 import dev.krishna.imagecolourextractor.ui.customcompose.SquareImageButton
 import dev.krishna.imagecolourextractor.util.checkIfPermissionIsGranted
@@ -53,7 +51,7 @@ import dev.krishna.imagecolourextractor.util.permission.permissionForPhotoGaller
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailsScreen(
-    navController: NavController
+    moveToCamera: () -> Unit
 ) {
     val permissionViewModel = viewModel<PermissionViewModel>()
     val dialogueQueue = permissionViewModel.visiblePermissionDialogQueue
@@ -66,6 +64,9 @@ fun DetailsScreen(
                 permission = permissionForCamera,
                 isGranted = isGranted
             )
+            if (isGranted) {
+                moveToCamera()
+            }
         }
     )
 
@@ -127,7 +128,7 @@ fun DetailsScreen(
                 ) {
                     onCameraIconClicked(
                         context = context,
-                        navController = navController,
+                        moveToCamera = moveToCamera,
                         cameraPermissionResultLauncher = cameraPermissionResultLauncher
                     )
                 }
@@ -167,7 +168,7 @@ fun DetailsScreen(
                 },
                 isPermissionPermanentlyDeclined = !checkIfPermissionIsGranted(context, permission),
                 onDismiss = permissionViewModel::dismissDialog,
-                onOkClick = { navController.navigate("Screen1") },
+                onOkClick = { moveToCamera() },
                 onGoToAppSettingsClick = {
                     openAppSettings(context)
                 }
@@ -185,15 +186,15 @@ private fun checkIfPermissionGranted(context:Context ,permissions: Array<String>
 
 private fun onCameraIconClicked(
     context: Context,
-    navController: NavController,
-    cameraPermissionResultLauncher: ManagedActivityResultLauncher<String, Boolean>
+    cameraPermissionResultLauncher: ManagedActivityResultLauncher<String, Boolean>,
+    moveToCamera: () -> Unit
 ) {
     if (checkIfPermissionGranted(
             context = context,
             permissions = arrayOf(permissionForCamera)
         )
     ) {
-        navController.navigate("Screen1")
+        moveToCamera()
     } else {
         cameraPermissionResultLauncher.launch(permissionForCamera)
     }
@@ -219,8 +220,7 @@ private fun onGalleryIconClicked(
 @Preview
 @Composable
 private fun PreviewDetailScreen() {
-    val navController = rememberNavController()
-    DetailsScreen(navController = navController)
+    DetailsScreen{}
 }
 
 
