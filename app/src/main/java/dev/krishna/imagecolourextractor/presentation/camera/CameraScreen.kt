@@ -39,6 +39,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.krishna.imagecolourextractor.presentation.camera.viewmodel.CameraViewModel
+import dev.krishna.imagecolourextractor.util.image.saveImageToGallery
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -62,7 +63,8 @@ fun CameraScreen(
         sheetPeekHeight = 0.dp,
         sheetContent = {
             PhotoBottomSheetContent(
-                bitmaps = bitmap
+                bitmaps = bitmap,
+                context = applicationContext
             )
         }
     ) { padding ->
@@ -116,8 +118,7 @@ fun CameraScreen(
                     onClick = {
                         onCaptureImage(
                             controller = controller,
-                            applicationContext = applicationContext,
-                            onPhotoTaken = viewModel::onTakePhoto
+                            applicationContext = applicationContext
                         )
                     }
                 ) {
@@ -134,7 +135,7 @@ fun CameraScreen(
 private fun onCaptureImage(
     controller: CameraController,
     applicationContext: Context,
-    onPhotoTaken: (Bitmap) -> Unit
+    //onPhotoTaken: (Bitmap) -> Unit
 ) {
     controller.takePicture(
         ContextCompat.getMainExecutor(applicationContext),
@@ -154,12 +155,16 @@ private fun onCaptureImage(
                     matrix,
                     true
                 )
-                onPhotoTaken(rotatedBitmap)
+                saveImageToGallery(
+                    applicationContext,
+                    rotatedBitmap,
+                    "Image_${System.currentTimeMillis()}"
+                )
             }
 
             override fun onError(exception: ImageCaptureException) {
                 super.onError(exception)
-                Log.e("Camera", "Exception occured while capturing image $exception")
+                Log.e("Camera", "Exception occurred while capturing image $exception")
             }
         }
     )

@@ -1,5 +1,6 @@
 package dev.krishna.imagecolourextractor.presentation.camera
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.util.Log
 import androidx.compose.foundation.Image
@@ -18,14 +19,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.unit.dp
+import dev.krishna.imagecolourextractor.util.image.getAllImagesFromDirectory
+import dev.krishna.imagecolourextractor.util.image.getBitmap
 
 @Composable
 fun PhotoBottomSheetContent(
     modifier: Modifier = Modifier,
-    bitmaps: List<Bitmap>
+    bitmaps: List<Bitmap>,
+    context: Context
 ) {
     Log.e("SRI", "Bitmap Stack -> ${bitmaps.size}")
-    if (bitmaps.isEmpty()) {
+    val imagePathList = getAllImagesFromDirectory(context)
+    Log.d("DEBUG", imagePathList.size.toString())
+    if (imagePathList.isEmpty()) {
         Box(
             modifier = Modifier
                 .padding(16.dp),
@@ -41,13 +47,15 @@ fun PhotoBottomSheetContent(
             contentPadding = PaddingValues(16.dp),
             modifier = modifier
         ) {
-            items(bitmaps) { bitmap ->
-                Image(
-                    bitmap = bitmap.asImageBitmap(),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                )
+            items(imagePathList) { imagePath ->
+                imagePath.getBitmap()?.asImageBitmap()?.let {
+                    Image(
+                        bitmap = it,
+                        contentDescription = null,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                    )
+                }
             }
         }
     }
