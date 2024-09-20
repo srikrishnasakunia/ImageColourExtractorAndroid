@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Matrix
 import android.util.Log
+import androidx.activity.compose.BackHandler
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture.OnImageCapturedCallback
 import androidx.camera.core.ImageCaptureException
@@ -25,6 +26,7 @@ import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -49,6 +51,15 @@ fun CameraScreen(
 ) {
     val composeScope = rememberCoroutineScope()
     val scaffoldState = rememberBottomSheetScaffoldState()
+
+    // On back press handled to if the BottomSheet is Expanded. If it is expanded, we hide it.
+    // If its already hidden, we navigate back to previous screen.
+    BackHandler(enabled = scaffoldState.bottomSheetState.currentValue == SheetValue.Expanded) {
+        composeScope.launch{
+            scaffoldState.bottomSheetState.partialExpand()
+        }
+    }
+
     val controller = remember {
         LifecycleCameraController(applicationContext).apply {
             setEnabledUseCases(
@@ -59,6 +70,7 @@ fun CameraScreen(
     val viewModel = hiltViewModel<CameraViewModel>()
     val bitmap by viewModel.getAllImagesAsBitmapList.collectAsStateWithLifecycle()
     val loadProgressBar by viewModel.showProgressBarBoolean.collectAsStateWithLifecycle()
+
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
         sheetPeekHeight = 0.dp,
