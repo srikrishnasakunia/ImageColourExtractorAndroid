@@ -39,7 +39,7 @@ import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.krishna.imagecolourextractor.presentation.camera.viewmodel.CameraViewModel
-import dev.krishna.imagecolourextractor.util.image.saveImageToGallery
+import dev.krishna.imagecolourextractor.ui.customcompose.CircularProgressBar
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -57,14 +57,15 @@ fun CameraScreen(
         }
     }
     val viewModel = hiltViewModel<CameraViewModel>()
-    val bitmap by viewModel.bitmaps.collectAsStateWithLifecycle()
+    val bitmap by viewModel.getAllImagesAsBitmapList.collectAsStateWithLifecycle()
+    val loadProgressBar by viewModel.showProgressBarBoolean.collectAsStateWithLifecycle()
     BottomSheetScaffold(
         scaffoldState = scaffoldState,
         sheetPeekHeight = 0.dp,
         sheetContent = {
             PhotoBottomSheetContent(
                 bitmaps = bitmap,
-                context = applicationContext
+                isLoading = loadProgressBar
             )
         }
     ) { padding ->
@@ -73,9 +74,11 @@ fun CameraScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            CircularProgressBar(isLoading = loadProgressBar)
             CameraPreview(
                 controller = controller,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier.fillMaxSize(),
+                isLoading = loadProgressBar
             )
             IconButton(
                 onClick = {
@@ -103,6 +106,8 @@ fun CameraScreen(
             ) {
                 IconButton(
                     onClick = {
+                        Log.e("SRI","${System.currentTimeMillis()}")
+                        viewModel.getAllImagesFromDirectory()
                         composeScope.launch {
                             scaffoldState.bottomSheetState.expand()
                         }
@@ -118,7 +123,8 @@ fun CameraScreen(
                     onClick = {
                         onCaptureImage(
                             controller = controller,
-                            applicationContext = applicationContext
+                            applicationContext = applicationContext,
+                            onPhotoTaken = viewModel::saveImageInDirectory
                         )
                     }
                 ) {
@@ -135,14 +141,13 @@ fun CameraScreen(
 private fun onCaptureImage(
     controller: CameraController,
     applicationContext: Context,
-    //onPhotoTaken: (Bitmap) -> Unit
+    onPhotoTaken: (Bitmap) -> Unit
 ) {
     controller.takePicture(
         ContextCompat.getMainExecutor(applicationContext),
         object: OnImageCapturedCallback() {
             override fun onCaptureSuccess(image: ImageProxy) {
                 super.onCaptureSuccess(image)
-
                 val matrix = Matrix().apply {
                     postRotate(image.imageInfo.rotationDegrees.toFloat())
                 }
@@ -155,16 +160,13 @@ private fun onCaptureImage(
                     matrix,
                     true
                 )
-                saveImageToGallery(
-                    applicationContext,
-                    rotatedBitmap,
-                    "Image_${System.currentTimeMillis()}"
-                )
+                image.close()
+                onPhotoTaken(rotatedBitmap)
             }
 
             override fun onError(exception: ImageCaptureException) {
                 super.onError(exception)
-                Log.e("Camera", "Exception occurred while capturing image $exception")
+                Log.e("SRI", "Exception occurred while capturing image $exception")
             }
         }
     )

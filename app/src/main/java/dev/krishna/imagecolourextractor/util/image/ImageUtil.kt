@@ -79,7 +79,7 @@ fun getAllImagesFromDirectory(context: Context): List<String> {
     return imageList
 }
 
-fun String.getBitmap(): Bitmap? {
+fun String.getBitmapFromFile(): Bitmap? {
     val imageFile = File(this)
     var imageBitmap: Bitmap? = null
     if (imageFile.exists()){
